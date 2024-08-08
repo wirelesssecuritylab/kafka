@@ -33,6 +33,8 @@ public final class JaasUtils {
 
     private static final String DEFAULT_ZK_LOGIN_CONTEXT_NAME = "Client";
     private static final String DEFAULT_ZK_SASL_CLIENT = "true";
+    public static final String DISALLOWED_LOGIN_MODULES_CONFIG = "org.apache.kafka.disallowed.login.modules";
+    public static final String DISALLOWED_LOGIN_MODULES_DEFAULT = "com.sun.security.auth.module.JndiLoginModule";
 
     private JaasUtils() {}
 

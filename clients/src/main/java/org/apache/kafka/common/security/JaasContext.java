@@ -30,6 +30,11 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import static org.apache.kafka.common.security.JaasUtils.DISALLOWED_LOGIN_MODULES_CONFIG;
+import static org.apache.kafka.common.security.JaasUtils.DISALLOWED_LOGIN_MODULES_DEFAULT;
 
 public class JaasContext {
 
@@ -91,9 +96,22 @@ public class JaasContext {
                 throw new IllegalArgumentException("JAAS config property does not contain any login modules");
             else if (contextModules.length != 1)
                 throw new IllegalArgumentException("JAAS config property contains " + contextModules.length + " login modules, should be 1 module");
+             throwIfLoginModuleIsNotAllowed(contextModules[0]);
             return new JaasContext(globalContextName, contextType, jaasConfig, dynamicJaasConfig);
         } else
             return defaultContext(contextType, listenerContextName, globalContextName);
+    }
+
+    private static void throwIfLoginModuleIsNotAllowed(AppConfigurationEntry appConfigurationEntry) {
+        Set<String> disallowedLoginModuleList = Arrays.stream(
+                System.getProperty(DISALLOWED_LOGIN_MODULES_CONFIG, DISALLOWED_LOGIN_MODULES_DEFAULT).split(","))
+                .map(String::trim)
+                .collect(Collectors.toSet());
+        String loginModuleName = appConfigurationEntry.getLoginModuleName().trim();
+        if (disallowedLoginModuleList.contains(loginModuleName)) {
+            throw new IllegalArgumentException(loginModuleName + " is not allowed. Update System property '"
+                    + DISALLOWED_LOGIN_MODULES_CONFIG + "' to allow " + loginModuleName);
+        }
     }
 
     private static JaasContext defaultContext(JaasContext.Type contextType, String listenerContextName,
@@ -129,6 +147,10 @@ public class JaasContext {
                     "configuration. System property '" + JaasUtils.JAVA_LOGIN_CONFIG_PARAM + "' is " +
                     (jaasConfigFile == null ? "not set" : jaasConfigFile);
             throw new IllegalArgumentException(errorMessage);
+        }
+
+        for (AppConfigurationEntry appConfigurationEntry : configEntries) {
+            throwIfLoginModuleIsNotAllowed(appConfigurationEntry);
         }
 
         return new JaasContext(contextName, contextType, jaasConfig, null);
